@@ -1,0 +1,92 @@
+-- Drop tables if they already exist
+DROP TABLE IF EXISTS Loans;
+DROP TABLE IF EXISTS Customers;
+
+-- 1. Create Customers table
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY AUTO_INCREMENT,
+    Name VARCHAR(100) NOT NULL,
+    Age INT NOT NULL,
+    Balance DECIMAL(10,2) NOT NULL,
+    IsVIP BOOLEAN DEFAULT FALSE
+);
+
+-- 2. Create Loans table
+CREATE TABLE Loans (
+    LoanID INT PRIMARY KEY AUTO_INCREMENT,
+    CustomerID INT NOT NULL,
+    InterestRate DECIMAL(5,2) NOT NULL,
+    DueDate DATE NOT NULL,
+    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
+);
+
+-- 3. Insert sample customers
+INSERT INTO Customers (Name, Age, Balance)
+VALUES
+('Alice', 65, 12000.00),
+('Bob', 45, 9500.00),
+('Charlie', 70, 15000.00),
+('Diana', 30, 8000.00);
+
+-- 4. Insert sample loans
+INSERT INTO Loans (CustomerID, InterestRate, DueDate)
+VALUES
+(1, 7.5, CURDATE() + INTERVAL 10 DAY),  -- Due soon
+(2, 6.0, CURDATE() + INTERVAL 45 DAY),  -- Not due soon
+(3, 8.2, CURDATE() + INTERVAL 25 DAY),  -- Due soon
+(4, 9.0, CURDATE() - INTERVAL 5 DAY);   -- Already overdue
+
+-- 5. Create the stored procedure
+DELIMITER $$
+
+CREATE PROCEDURE UpdateCustomerLoans()
+BEGIN
+  -- Declare variables and cursor first
+  DECLARE done INT DEFAULT FALSE;
+  DECLARE v_name VARCHAR(100);
+  DECLARE v_due_date DATE;
+  DECLARE v_loan_id INT;
+
+  -- Declare the cursor
+  DECLARE cur CURSOR FOR
+    SELECT c.Name, l.DueDate, l.LoanID
+    FROM Loans l
+    JOIN Customers c ON l.CustomerID = c.CustomerID
+    WHERE l.DueDate <= CURDATE() + INTERVAL 30 DAY;
+
+  -- Declare the continue handler
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+
+  -- Scenario 1: Apply 1% interest discount for customers over 60
+  UPDATE Loans l
+  JOIN Customers c ON l.CustomerID = c.CustomerID
+  SET l.InterestRate = l.InterestRate * 0.99
+  WHERE c.Age > 60;
+
+  -- Scenario 2: Promote customers to VIP with balance > 10000
+  UPDATE Customers
+  SET IsVIP = TRUE
+  WHERE Balance > 10000;
+
+  -- Scenario 3: Print reminders for loans due in 30 days
+  OPEN cur;
+
+  read_loop: LOOP
+    FETCH cur INTO v_name, v_due_date, v_loan_id;
+    IF done THEN
+      LEAVE read_loop;
+    END IF;
+
+    SELECT CONCAT('Reminder: Dear ', v_name, 
+                  ', your loan (ID: ', v_loan_id, 
+                  ') is due on ', DATE_FORMAT(v_due_date, '%d-%b-%Y')) AS ReminderMessage;
+  END LOOP;
+
+  CLOSE cur;
+
+END$$
+
+DELIMITER ;
+
+-- 6. Call the procedure
+CALL UpdateCustomerLoans();
