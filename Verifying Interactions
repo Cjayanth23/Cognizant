@@ -1,0 +1,45 @@
+package org.example;
+
+public interface ExternalApi {
+    String getData();
+}
+
+
+
+package org.example;
+
+public class MyService {
+    private final ExternalApi externalApi;
+
+    public MyService(ExternalApi externalApi) {
+        this.externalApi = externalApi;
+    }
+
+    public String fetchData() {
+        return externalApi.getData();
+    }
+}
+
+
+package org.example;
+
+import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.*;
+
+public class MyServiceVerifyTest {
+
+    @Test
+    public void testVerifyInteraction() {
+        // Step 1: Create mock object
+        ExternalApi mockApi = mock(ExternalApi.class);
+
+        // Step 2: Inject mock into service
+        MyService service = new MyService(mockApi);
+
+        // Step 3: Call method that uses the mock
+        service.fetchData();
+
+        // Step 4: Verify that getData() was called exactly once
+        verify(mockApi).getData(); // ✅ pass if it was called at least once
+    }
+}
