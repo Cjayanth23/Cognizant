@@ -1,0 +1,45 @@
+package org.example;
+
+public interface ExternalApi {
+    String getData();
+}
+
+package org.example;
+
+public class MyService {
+    private final ExternalApi externalApi;
+
+    public MyService(ExternalApi externalApi) {
+        this.externalApi = externalApi;
+    }
+
+    public String fetchData() {
+        return externalApi.getData();
+    }
+}
+
+
+package org.example;
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
+
+public class MyServiceMockTest {
+
+    @Test
+    public void testExternalApiMocking() {
+        // Step 1: Create mock object
+        ExternalApi mockApi = mock(ExternalApi.class);
+
+        // Step 2: Stub method to return predefined data
+        when(mockApi.getData()).thenReturn("Mock Data");
+
+        // Step 3: Inject into service
+        MyService service = new MyService(mockApi);
+
+        // Step 4: Fetch result and assert
+        String result = service.fetchData();
+        assertEquals("Mock Data", result);
+    }
+}
