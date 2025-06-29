@@ -1,0 +1,96 @@
+-- Drop tables if they already exist
+DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS employees;
+
+-- Create 'accounts' table
+CREATE TABLE accounts (
+    account_id INT PRIMARY KEY AUTO_INCREMENT,
+    account_holder VARCHAR(100),
+    account_type VARCHAR(20),
+    balance DECIMAL(10,2)
+);
+
+-- Insert sample data into 'accounts'
+INSERT INTO accounts (account_holder, account_type, balance) VALUES 
+('Alice', 'savings', 1000.00),
+('Bob', 'current', 2000.00),
+('Charlie', 'savings', 1500.00),
+('Daisy', 'savings', 3000.00);
+
+-- Create 'employees' table
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100),
+    salary DECIMAL(10,2),
+    department VARCHAR(50)
+);
+
+-- Insert sample data into 'employees'
+INSERT INTO employees (name, salary, department) VALUES 
+('John Doe', 50000.00, 'HR'),
+('Jane Smith', 60000.00, 'Finance'),
+('Mark Taylor', 55000.00, 'Finance'),
+('Emily Stone', 45000.00, 'HR');
+
+-- Procedure 1: Process Monthly Interest for Savings Accounts
+DELIMITER $$
+
+CREATE PROCEDURE ProcessMonthlyInterest()
+BEGIN
+    UPDATE accounts
+    SET balance = balance + (balance * 0.01)
+    WHERE account_type = 'savings';
+END $$
+
+-- Procedure 2: Update Employee Bonus
+CREATE PROCEDURE UpdateEmployeeBonus(
+    IN dept_name VARCHAR(100),
+    IN bonus_percent DECIMAL(5,2)
+)
+BEGIN
+    UPDATE employees
+    SET salary = salary + (salary * (bonus_percent / 100))
+    WHERE department = dept_name;
+END $$
+
+-- Procedure 3: Transfer Funds Between Accounts
+CREATE PROCEDURE TransferFunds(
+    IN from_account_id INT,
+    IN to_account_id INT,
+    IN amount DECIMAL(10,2)
+)
+BEGIN
+    DECLARE current_balance DECIMAL(10,2);
+
+    -- Fetch current balance of source account
+    SELECT balance INTO current_balance
+    FROM accounts
+    WHERE account_id = from_account_id;
+
+    -- Check if balance is sufficient
+    IF current_balance >= amount THEN
+        -- Deduct from source account
+        UPDATE accounts
+        SET balance = balance - amount
+        WHERE account_id = from_account_id;
+
+        -- Add to target account
+        UPDATE accounts
+        SET balance = balance + amount
+        WHERE account_id = to_account_id;
+    ELSE
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Insufficient balance in source account';
+    END IF;
+END $$
+
+DELIMITER ;
+-- Apply interest to savings accounts
+CALL ProcessMonthlyInterest();
+-- Give 10% bonus to HR department
+CALL UpdateEmployeeBonus('HR', 10.0);
+-- Transfer 500 from account 1 to account 2
+CALL TransferFunds(1, 2, 500.00);
+
+SELECT * FROM accounts;
+SELECT * FROM employees;
